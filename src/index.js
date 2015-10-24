@@ -131,7 +131,7 @@ function parse(tokens) {
 
   return tree;
 }
-function merge(target, source) {
+function merge(target, source, options) {
 
   function find(array, callback) {
     var i = 0;
@@ -153,15 +153,19 @@ function merge(target, source) {
           return block[0][1] === item[0][1];
         });
         if (blockMatch) {
-          var lines = blockMatch.slice(1);
-          block.slice(1).forEach(function(line) {
-            var lineMatch = lines.find(function(item) {
-              return item[0] === line[0] && item[1] === line[1];
+          if (options.merge) {
+            var lines = blockMatch.slice(1);
+            block.slice(1).forEach(function(line) {
+              var lineMatch = lines.find(function(item) {
+                return item[0] === line[0] && item[1] === line[1];
+              });
+              if (!lineMatch) {
+                blockMatch.push(line);
+              }
             });
-            if (!lineMatch) {
-              blockMatch.push(line);
-            }
-          });
+          } else {
+            blockMatch.blocks = block.blocks;
+          }
         } else {
           sectionMatch.blocks.push(block);
         }
@@ -222,7 +226,7 @@ module.exports = function() {
   }
 
   var merged = [].reduce.call(sources, function(reduced, source) {
-    return merge(reduced, parse(tokenize(source)));
+    return merge(reduced, parse(tokenize(source)), options);
   }, []);
 
   return compile(merged, options);
