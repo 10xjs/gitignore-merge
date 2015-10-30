@@ -1,8 +1,0 @@
-#@ Platform Specific
-# Windows
-Thumbs.db
-ehthumbs.db
-$RECYCLE.BIN/
-
-# Folder config file
-Desktop.ini

@@ -1,23 +1,21 @@
-function tokenize(input) {
-  var WHITESPACE = /^[^\n\S]+/;
-  var COMMENT = /^#[^\S\n]*([^\n]*)\n?/;
-  var HEADER = /^[^\S\n]*#@[^\S\n]+([^\n]*)\n?/;
-  var LINE = /^(?:\n[^\n\S]*)+/;
-  var RULE = /^([^#\n][^\n]*)\n?/;
+export function tokenize(input) {
+  const WHITESPACE = /^[^\n\S]+/;
+  const COMMENT = /^#[^\S\n]*([^\n]*)\n?/;
+  const HEADER = /^[^\S\n]*#@[^\S\n]+([^\n]*)\n?/;
+  const LINE = /^(?:\n[^\n\S]*)+/;
+  const RULE = /^([^#\n][^\n]*)\n?/;
 
-  var tokens = [];
-  var chunk;
-  var inBlock;
-  var inSection;
-  var comsumed;
-  var i = 0;
+  const tokens = [];
+  let chunk;
+  let inBlock;
+  let inSection;
 
   function tag() {
-    return (tokens.length ? tokens[tokens.length -1] : [])[0];
+    return (tokens.length ? tokens[tokens.length - 1] : [])[0];
   }
 
   function addToken(tag, value) {
-    var token;
+    let token;
     if (value !== undefined) {
       token = [ tag, value ];
     } else {
@@ -28,13 +26,13 @@ function tokenize(input) {
   }
 
   function whitespaceToken() {
-    var match = chunk.match(WHITESPACE);
+    const match = chunk.match(WHITESPACE);
     if (!match) return 0;
     return match[0].length;
   }
 
   function sectionToken() {
-    var match = chunk.match(HEADER);
+    const match = chunk.match(HEADER);
     if (!match) return 0;
     inBlock = false;
     inSection = true;
@@ -43,7 +41,7 @@ function tokenize(input) {
   }
 
   function commentToken() {
-    var match = chunk.match(COMMENT);
+    const match = chunk.match(COMMENT);
     if (!match) return 0;
     if (! inSection) {
       addToken('SECTION');
@@ -58,14 +56,14 @@ function tokenize(input) {
   }
 
   function lineToken() {
-    var match = chunk.match(LINE);
+    const match = chunk.match(LINE);
     if (!match) return 0;
     addToken('LINE');
     return match[0].length;
   }
 
   function ruleToken() {
-    var match = chunk.match(RULE);
+    const match = chunk.match(RULE);
     if (!match) return 0;
     if (! inSection) {
       addToken('SECTION');
@@ -78,8 +76,9 @@ function tokenize(input) {
     return match[0].length;
   }
 
-  while (chunk = input.slice(i)) {
-    consumed =
+  let i = 0;
+  while ((chunk = input.slice(i))) {
+    const consumed =
       whitespaceToken() ||
       sectionToken() ||
       commentToken() ||
@@ -92,142 +91,168 @@ function tokenize(input) {
   return tokens;
 }
 
-function parse(tokens) {
-  var token;
-  var section;
-  var block;
-  var block;
-  var tree = [];
+export function parse(tokens) {
+  const tree = [];
+  let section;
+  let block;
 
-  function addSection() {
+  function addSection(token) {
     section = { title: token[1], blocks: [] };
     tree.push(section);
   }
 
-  function addBlock() {
-    block = [token];
+  function addBlock(token) {
+    block = { title: token[1], lines: [] };
     section.blocks.push(block);
   }
 
-  function addLine() {
-    block.push(token);
+  function addLine(token) {
+    block.lines.push(token);
   }
-  while (token = tokens.shift()) {
+
+  tokens.forEach(token => {
     switch (token[0]) {
     case 'SECTION':
-      addSection();
+      addSection(token);
       break;
     case 'BLOCK':
-      addBlock();
+      addBlock(token);
       break;
     case 'RULE':
     case 'COMMENT':
-      addLine();
+      addLine(token);
       break;
     default:
       break;
     }
-  }
+  });
 
   return tree;
 }
-function merge(target, source, options) {
 
-  function find(array, callback) {
-    var i = 0;
-    var item;
-
-    while ( item = array[i]) {
-      if (callback(item)) return item;
-      i++;
-    }
-  }
-
-  source.forEach(function(section) {
-    var sectionMatch = find(target, function(item) {
-      return item.title === section.title;
-    });
-    if (sectionMatch) {
-      section.blocks.forEach(function(block) {
-        var blockMatch = find(sectionMatch.blocks, function(item) {
-          return block[0][1] === item[0][1];
-        });
-        if (blockMatch) {
-          if (options.merge) {
-            var lines = blockMatch.slice(1);
-            block.slice(1).forEach(function(line) {
-              var lineMatch = lines.find(function(item) {
-                return item[0] === line[0] && item[1] === line[1];
-              });
-              if (!lineMatch) {
-                blockMatch.push(line);
-              }
-            });
-          } else {
-            blockMatch.blocks = block.blocks;
-          }
-        } else {
-          sectionMatch.blocks.push(block);
-        }
-      })
-    } else {
-      target.push(section);
-    }
-  });
-  return target;
+export function mergeBlock(target, source) {
+  return {
+    ...target,
+    lines: source.lines.reduce((lines, line) => {
+      const lineMatch = lines.find(item => {
+        return item[0] === line[0] && item[1] === line[1];
+      });
+      if (!lineMatch) {
+        target.lines.push(line);
+      }
+      return lines;
+    }, target.lines),
+  };
 }
 
-function compile(tree, options) {
+export function mergeSection(target, source, { mergeBlocks }) {
+  return {
+    ...target,
+    blocks: source.blocks.reduce((blocks, block) => {
+      // Identify a matching target block.
+      const targetBlock = mergeBlocks ? blocks.find(item => {
+        return item.title === block.title;
+      }) : null;
 
+      if (targetBlock) {
+        mergeBlock(targetBlock, block);
+      } else {
+        blocks.push(block);
+      }
+
+      return blocks;
+    }, target.blocks),
+  };
+}
+
+function extractOptions(args) {
+  const last = args[args.length - 1];
+  if (Object.prototype.toString.call(last) === '[object Object]') {
+    return [ args.slice(0, -1), last ];
+  }
+  return [ args ];
+}
+
+export function merge(target, ...args) {
+  const [ sources, options ] = extractOptions(args);
+
+  function _merge(target, sources, {
+    mergeSections = true,
+    mergeBlocks = true,
+  } = {}) {
+    return sources.reduce((target, source) => {
+      return source.reduce((target, section) => {
+        // Identify matching a target section.
+        const targetSection = mergeSections ? target.find(item => {
+          return item.title === section.title;
+        }) : null;
+
+        if (targetSection) {
+          mergeSection(targetSection, section, { mergeBlocks });
+        } else {
+          target.push(section);
+        }
+
+        return target;
+      }, target);
+    }, target);
+  }
+
+  return _merge(target, sources, options);
+}
+
+function compile(tree, { sort = true } = {}) {
   function lower(string) {
     return string ? string.toLowerCase() : '';
   }
 
-  if (options.sort) {
-    // sort sections
-    tree.sort(function(a, b) {
-      if (lower(a.title) < lower(b.title)) return -1;
-      if (lower(a.title) > lower(b.title)) return 1;
-      return 0;
-    });
+  function sortTitle(a, b) {
+    if (lower(a.title) < lower(b.title)) return -1;
+    if (lower(a.title) > lower(b.title)) return 1;
+    return 0;
+  }
 
-    // sort section blocks
+  if (sort) {
+    // sort sections
+    tree.sort(sortTitle);
+
+    // sort blocks
     tree.forEach(function(section) {
-      section.blocks.sort(function(a, b) {
-        if (lower(a[0][1]) < lower(b[0][1])) return -1;
-        if (lower(a[0][1]) > lower(b[0][1])) return 1;
-        return 0;
-      });
-    }); 
+      section.blocks.sort(sortTitle);
+    });
+  }
+
+  function heading(prefix, title) {
+    return `#${prefix}${ title ? ` ${title} ` : '' }\n`;
+  }
+
+  function comment(text) {
+    return text ? [`# ${text}`] : [];
   }
 
   return tree.map(function(section) {
-    return '#@ ' + (section.title || '') + '\n' +
+    return `${heading('@', section.title)}${
       section.blocks.map(function(block) {
-        return block.reduce(function(reduced, line) {
+        return `${heading('', block.title)}${
+          block.lines.reduce(function(reduced, line) {
             switch (line[0]) {
             case 'RULE':
               return reduced.concat([line[1]]);
-            case 'BLOCK':
             case 'COMMENT':
-              return reduced.concat(line[1] ? ['# ' + line[1]] : []);
+              return reduced.concat(comment(line[1]));
+            default:
+              break;
             }
           }, []).join('\n')
-      }).join('\n\n');
+        }`;
+      }).join('\n\n')
+    }`;
   }).join('\n\n');
 }
 
-module.exports = function() {
-  var sources = arguments;
-  var options = {};
-  if (Object.prototype.toString.call(arguments[arguments.length -1]) === '[object Object]') {
-    sources = [].slice.call(arguments, 0, -1);
-    options = [].slice.call(arguments, -1);
-  }
-
-  var merged = [].reduce.call(sources, function(reduced, source) {
-    return merge(reduced, parse(tokenize(source)), options);
-  }, []);
-
+export default function(...args) {
+  const [ sources, options ] = extractOptions(args);
+  const parsed = sources.map(source => parse(tokenize(source)));
+  const merged = merge(...parsed, options);
   return compile(merged, options);
 }

@@ -1,0 +1,19 @@
+{
+  "env": {
+    "node": true
+  },
+  "extends": [
+    "metalab/rules/babel",
+    "metalab/rules/best-practices",
+    "metalab/rules/docs",
+    "metalab/rules/errors",
+    "metalab/rules/filenames",
+    "metalab/rules/import",
+    "metalab/rules/modern",
+    "metalab/rules/react",
+    "metalab/rules/style"
+  ],
+  "rules": {
+    "no-cond-assign": [ 2, "except-parens" ]
+  }
+}
