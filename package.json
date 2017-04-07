@@ -1,6 +1,7 @@
 {
-  "name": "gitignore-merge",
-  "version": "0.1.0",
+  "name": "gitignore-merge-commonjs",
+  "description": "A fork of gitignore-merge which builds with commonJS module support, so it works with nodeJS",
+  "version": "0.1.1",
   "license": "CC0-1.0",
   "main": "dist/index.js",
   "scripts": {
@@ -13,7 +14,15 @@
   },
   "devDependencies": {
     "babel-cli": "^6.0.2",
-    "eslint": "^1.6.0",
-    "eslint-config-metalab": "^0.2.2"
+    "babel-plugin-transform-object-rest-spread": "^6.23.0",
+    "babel-eslint": "^7.2.1",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.24.0",
+    "babel-preset-metalab": "^1.0.0",
+    "eslint": "^1.10.3",
+    "eslint-config-metalab": "^0.2.2",
+    "eslint-plugin-filenames": "^1.1.0",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-react": "^6.10.3"
   }
 }
+
